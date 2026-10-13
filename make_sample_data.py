@@ -35,6 +35,48 @@ FACTORS = [
     "small_large_spread", "sector_dispersion", "correlation_1m", "news_sentiment", "analyst_dispersion",
     "insider_buying", "ipo_activity", "macro_regime", "risk_regime", "seasonality",
 ]
+# Бизнес-описания факторов для примера маппера (--mapper-output).
+FACTOR_DESC = {
+    "momentum_3m": "Моментум индекса за 3 месяца", "momentum_6m": "Моментум индекса за 6 месяцев",
+    "momentum_12m": "Моментум индекса за 12 месяцев", "reversal_1m": "Разворот доходности за 1 месяц",
+    "vol_spread": "Спред подразумеваемой и реализованной волатильности",
+    "vol_term_structure": "Срочная структура волатильности", "realized_vol_1m": "Реализованная волатильность за 1 месяц",
+    "implied_vol_3m": "Подразумеваемая волатильность на 3 месяца", "skew_25d": "Скос волатильности 25-дельта",
+    "credit_spread": "Кредитный спред корпоративных облигаций", "hy_ig_spread": "Спред high yield к инвестиционному уровню",
+    "cds_index": "Индекс кредитных дефолтных свопов", "yield_curve": "Наклон кривой доходности 10л − 2г",
+    "yield_curve_2s5s": "Наклон кривой доходности 5л − 2г", "real_rates": "Реальные процентные ставки",
+    "breakeven_infl": "Инфляционные ожидания рынка", "term_premium": "Премия за срок",
+    "policy_rate_gap": "Отклонение ключевой ставки от нейтральной", "pmi_new_orders": "PMI: новые заказы",
+    "pmi_composite": "Композитный PMI", "pmi_services": "PMI сферы услуг",
+    "industrial_prod_yoy": "Промышленное производство, г/г", "retail_sales_yoy": "Розничные продажи, г/г",
+    "unemployment_claims": "Заявки на пособие по безработице", "consumer_confidence": "Индекс потребительского доверия",
+    "earnings_rev": "Пересмотры прогнозов прибыли", "earnings_surprise": "Сюрпризы отчётности по прибыли",
+    "eps_growth_fwd": "Ожидаемый рост прибыли на акцию", "pe_fwd": "Форвардный P/E рынка",
+    "dividend_yield_spread": "Спред дивидендной доходности к ставкам", "buyback_yield": "Доходность обратных выкупов",
+    "breadth": "Ширина рынка: доля бумаг выше средней", "advance_decline": "Линия роста-падения",
+    "new_highs_lows": "Новые максимумы минус минимумы", "flows_em": "Потоки в фонды развивающихся рынков",
+    "flows_dm_equity": "Потоки в фонды акций развитых рынков", "fund_positioning": "Позиционирование фондов",
+    "short_interest": "Короткие позиции", "put_call_ratio": "Отношение пут/колл",
+    "margin_debt_yoy": "Маржинальный долг, г/г", "fx_basis": "Валютный базис",
+    "dxy_trend": "Тренд индекса доллара", "usd_rub_vol": "Волатильность USD/RUB", "carry_index": "Индекс керри-трейда",
+    "oil_mom": "Моментум цены нефти", "brent_curve": "Наклон фьючерсной кривой Brent",
+    "gas_price_mom": "Моментум цены газа", "copper_gold": "Отношение меди к золоту",
+    "metals_index_mom": "Моментум индекса металлов", "agri_index_mom": "Моментум индекса агросырья",
+    "gold_trend": "Тренд цены золота", "bitcoin_mom": "Моментум биткоина", "liquidity_index": "Индекс ликвидности",
+    "m2_growth": "Рост денежной массы M2", "credit_impulse": "Кредитный импульс",
+    "bank_lending_yoy": "Банковское кредитование, г/г", "financial_conditions": "Индекс финансовых условий",
+    "repo_spread": "Спред ставок РЕПО", "ofz_curve": "Наклон кривой ОФЗ", "ofz_auction_cover": "Переподписка на аукционах ОФЗ",
+    "cbr_rate_expect": "Ожидания по ключевой ставке ЦБ", "inflation_surprise": "Инфляционный сюрприз",
+    "wage_growth": "Рост заработных плат", "housing_starts": "Начало строительства жилья",
+    "auto_sales_yoy": "Продажи автомобилей, г/г", "freight_index": "Индекс грузоперевозок",
+    "baltic_dry": "Балтийский сухогрузный индекс", "semis_cycle": "Цикл полупроводников",
+    "tech_rel_strength": "Относительная сила техсектора", "value_growth_spread": "Спред стоимость − рост",
+    "small_large_spread": "Спред малой и крупной капитализации", "sector_dispersion": "Дисперсия доходностей секторов",
+    "correlation_1m": "Средняя корреляция бумаг за 1 месяц", "news_sentiment": "Тональность новостного фона",
+    "analyst_dispersion": "Разброс прогнозов аналитиков", "insider_buying": "Покупки инсайдеров",
+    "ipo_activity": "Активность IPO", "macro_regime": "Макроэкономический режим", "risk_regime": "Режим аппетита к риску",
+    "seasonality": "Сезонность",
+}
 CATEGORICAL = {
     "macro_regime": ["expansion", "slowdown", "contraction", "recovery"],
     "risk_regime": ["risk_on", "neutral", "risk_off"],
@@ -184,6 +226,7 @@ def main():
     ap.add_argument("--end", default=None, help="последняя дата сетки (по умолчанию: 2026-09-30 / 2026-10-09)")
     ap.add_argument("--drop-date", action="append", default=[], help="выкинуть дату из сетки (пропуск)")
     ap.add_argument("--seed", type=int, default=7)
+    ap.add_argument("--mapper-output", help="дополнительно записать маппер factor → factor_desc в этот xlsx")
     ap.add_argument("--inject-errors", action="store_true",
                     help="добавить дубликат ключа, signal=2, пустой вес, смену веса, рассинхрон total и чужую модель")
     a = ap.parse_args()
@@ -196,6 +239,11 @@ def main():
         pred_df.to_excel(xw, sheet_name="predictions", index=False)
         sig_df.to_excel(xw, sheet_name="signals", index=False)
     print(f"{out}: {len(pred_df)} дат, {len(sig_df)} строк signals")
+    if a.mapper_output:
+        mp = Path(a.mapper_output)
+        mp.parent.mkdir(parents=True, exist_ok=True)
+        pd.DataFrame({"factor": list(FACTOR_DESC), "factor_desc": list(FACTOR_DESC.values())}).to_excel(mp, index=False)
+        print(f"{mp}: {len(FACTOR_DESC)} описаний факторов")
 
 
 if __name__ == "__main__":

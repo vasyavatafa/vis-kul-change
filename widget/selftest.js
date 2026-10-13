@@ -95,6 +95,12 @@
         check(l.getBoundingClientRect().right <= svgLeft + 1, 'К4: ' + tag + ' подпись ' + l.textContent + ' не слева от столбца');
       });
       check(col.querySelectorAll('rect.sg').length === c.items.length, 'К4: ' + tag + ' число сегментов ' + c.model);
+      // --mapper: подписи показывают бизнес-описание, если оно есть
+      col.querySelectorAll('.lbl[data-f] .nm').forEach(function (nm) {
+        var fi = +nm.parentNode.getAttribute('data-f');
+        var want = (DATA.factor_desc && DATA.factor_desc[fi]) || DATA.factors[fi];
+        check(nm.textContent === want, 'Маппер: ' + tag + ' подпись «' + nm.textContent + '» ≠ «' + want + '»');
+      });
       // К5: в таблице изменений все и только 1→0, 0→1, новый, выбыл
       var card = document.querySelectorAll('#block3 .tcard')[ci];
       var got = Array.prototype.map.call(card.querySelectorAll('tbody tr[data-f]'), function (r) { return +r.getAttribute('data-f'); }).sort();

@@ -7,7 +7,8 @@
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
-.venv/bin/python build_dashboard.py --input path/to/predictions.xlsx --output dashboard.html
+.venv/bin/python build_dashboard.py --input path/to/predictions.xlsx --output dashboard.html \
+    --mapper path/to/factor_mapper.xlsx
 ```
 
 Скрипт читает листы `predictions` и `signals`, валидирует их, печатает проблемы в консоль и встраивает
@@ -16,6 +17,7 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 
 | Флаг | Назначение |
 | --- | --- |
+| `--mapper map.xlsx` | бизнес-описания факторов: первый лист, столбцы `factor` и `factor_desc` |
 | `--config cfg.json` | конфиг сборки: `factor_spark_points` (6), `total_spark_points` (24), `eps_tolerance` (1e-6), `default_model_1`, `default_model_2`, `title` |
 | `--spark-points N` | окно спарклайна factor_value, в точках данных |
 | `--total-spark-points N` | окно спарклайна total в блоке 1 |
@@ -23,6 +25,17 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 | `--self-test` | встроить прогон критериев приёмки (результат — плашкой вверху и в `window.__selftest`) |
 
 Коды возврата: 0 — собрано; 1 — `--strict` и есть проблемы; 2 — собрать нельзя (нет файла/листа/столбцов).
+
+## Описания факторов (`--mapper`)
+
+С маппером везде — в подписях столбцов, таблицах, подсказках — вместо имени фактора показывается `factor_desc`.
+Исходное имя остаётся во второй строке сводной таблицы, в подсказке и во всплывающем title. Без `--mapper`
+виджет работает как раньше, на исходных именах.
+
+Пробелы вокруг значений обрезаются. Предупреждения, без остановки сборки: фактор из данных без описания
+(показывается исходное имя), пустое `factor_desc`, несколько разных описаний одного фактора (берётся первое).
+Лишние строки маппера, которых нет в данных, игнорируются, поэтому можно держать один общий справочник.
+Нет файла или столбцов — ошибка, код возврата 2. Пример: `make_sample_data.py --mapper-output data/factor_mapper.xlsx`.
 
 ## Что проверяется при сборке
 
@@ -44,7 +57,7 @@ widget/styles.css       палитра (раздел 8), тёмная тема, 
 widget/selftest.js      критерии приёмки 1–6 в браузере
 widget/fonts.css        IBM Plex Sans / Mono (OFL), latin + cyrillic
 tests/test_build.py     тесты сборки: .venv/bin/python -m unittest discover -s tests
-data/                   синтетические данные
+data/                   синтетические данные и пример маппера factor_mapper.xlsx
 ```
 
 ## Приёмка

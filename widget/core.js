@@ -21,6 +21,7 @@
     this.data = data;
     this.dates = data.dates;
     this.factors = data.factors;
+    this.descs = data.factor_desc || [];   // бизнес-описания из --mapper (могут отсутствовать)
     this.models = data.models;
     this.dateIndex = {};
     for (var i = 0; i < data.dates.length; i++) this.dateIndex[data.dates[i]] = i;
@@ -70,6 +71,8 @@
       var it = {
         fi: fi,
         name: self.factors[fi],
+        desc: self.descs[fi] || null,
+        label: self.descs[fi] || self.factors[fi],
         inPrev: !!p, inCur: !!c,
         sPrev: p ? p[1] : 0, sCur: c ? c[1] : 0,
         // отсутствующий сигнал = 0; вес отсутствующей стороны берётся с другой даты,
@@ -142,7 +145,7 @@
     var rank = {};
     GROUP_ORDER.forEach(function (g, i) { rank[g] = i; });
     var segs = items.slice().sort(function (a, b) {
-      return (rank[a.group] - rank[b.group]) || (Math.abs(b.w) - Math.abs(a.w)) || cmpStr(a.name, b.name);
+      return (rank[a.group] - rank[b.group]) || (Math.abs(b.w) - Math.abs(a.w)) || cmpStr(a.label, b.label);
     });
     var acc = 0;
     for (var i = 0; i < segs.length; i++) {
@@ -210,7 +213,8 @@
       var diverged = !!(a && b && a.state !== b.state);
       var changed = !!((a && a.changed) || (b && b.changed));
       rows.push({
-        fi: fi, name: self.factors[fi], a: a || null, b: b || null,
+        fi: fi, name: self.factors[fi], desc: self.descs[fi] || null, label: self.descs[fi] || self.factors[fi],
+        a: a || null, b: b || null,
         vPrev: vPrev, vCur: vCur, dAbs: d.abs, dRel: d.rel,
         diverged: diverged, changed: changed,
         group: diverged ? 0 : changed ? 1 : 2,
@@ -222,7 +226,7 @@
       if (x.group === 0 && x.changed !== y.changed) return x.changed ? -1 : 1;
       if (x.group < 2 && x.weight !== y.weight) return y.weight - x.weight;
       var rx = x.dRel === null ? -1 : Math.abs(x.dRel), ry = y.dRel === null ? -1 : Math.abs(y.dRel);
-      return (ry - rx) || cmpStr(x.name, y.name);
+      return (ry - rx) || cmpStr(x.label, y.label);
     });
     return rows;
   };

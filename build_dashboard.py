@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
 """Сборка виджета попарного сравнения моделей.
 
-    python build_dashboard.py --input path/to/predictions.xlsx --output dashboard.html
+    python build_dashboard.py --input path/to/predictions.xlsx --output dashboard.html \
+        [--mapper path/to/factor_mapper.xlsx]
 
 Скрипт читает листы predictions и signals, валидирует их, печатает найденные проблемы
 в консоль и встраивает данные в HTML как JSON. Все расчёты переходов и разложения ΔT
 выполняются в браузере (widget/core.js), поэтому смена моделей и дат не требует
 пересборки. Частота дат нигде не предполагается: порядок задаётся самими данными.
+
+С --mapper подписи факторов везде заменяются бизнес-описаниями из таблицы со столбцами
+factor и factor_desc; исходное имя остаётся в подсказках.
 
 Код возврата: 0 — собрано; 1 — собрано, но найдены проблемы и указан --strict;
 2 — собрать нельзя (нет файла, листа или обязательных столбцов).
@@ -36,6 +40,7 @@ DEFAULT_CONFIG = {
 }
 
 SIGNAL_COLUMNS = ["DATE", "model", "factor", "factor_value", "signal", "weight"]
+MAPPER_COLUMNS = ["factor", "factor_desc"]
 MAX_ISSUE_ROWS = 50  # сколько проблемных строк на одну проблему класть в виджет
 
 WIDGET_DIR = Path(__file__).resolve().parent / "widget"
@@ -259,6 +264,50 @@ def validate_signals(sig, pred_dates, issues):
     return sig
 
 
+def read_mapper(path, issues):
+    """Маппер: первый лист xlsx со столбцами factor и factor_desc → {имя фактора: описание}."""
+    path = Path(path)
+    if not path.exists():
+        raise BuildError(f"Файл маппера не найден: {path}")
+    try:
+        df = pd.read_excel(path, sheet_name=0, engine="openpyxl")
+    except Exception as e:  # noqa: BLE001 — показываем пользователю как есть
+        raise BuildError(f"Не удалось прочитать маппер {path}: {e}") from e
+    df.columns = [str(c).strip() for c in df.columns]
+    missing = [c for c in MAPPER_COLUMNS if c not in df.columns]
+    if missing:
+        raise BuildError(f"Маппер {path.name}: нет столбцов {', '.join(missing)} (есть: {', '.join(df.columns)})")
+    df = df[MAPPER_COLUMNS].copy()
+    df["_row"] = df.index + 2
+    df = df[df["factor"].notna()]
+    df["factor"] = df["factor"].astype(str).str.strip()
+    df["factor_desc"] = df["factor_desc"].map(lambda v: None if pd.isna(v) else (str(v).strip() or None))
+
+    empty = df[df["factor_desc"].isna()]
+    if len(empty):
+        issues.add("warning", "mapper_empty_desc",
+                   f"маппер: пустое factor_desc у {len(empty)} факторов — для них показано исходное имя",
+                   empty[["_row", "factor"]].values.tolist(), ["строка", "factor"])
+    df = df[df["factor_desc"].notna()]
+
+    conflicts = df.groupby("factor")["factor_desc"].nunique()
+    conflicts = conflicts[conflicts > 1]
+    if len(conflicts):
+        d = df[df["factor"].isin(conflicts.index)].sort_values(["factor", "_row"])
+        issues.add("warning", "mapper_conflicting_desc",
+                   f"маппер: у {len(conflicts)} факторов несколько разных описаний — взято первое по порядку строк",
+                   d[["_row", "factor", "factor_desc"]].values.tolist(), ["строка", "factor", "factor_desc"])
+    return dict(df.drop_duplicates("factor", keep="first")[["factor", "factor_desc"]].values.tolist())
+
+
+def check_mapper_coverage(factors, mapper, issues):
+    unmapped = [f for f in factors if f not in mapper]
+    if unmapped:
+        issues.add("warning", "mapper_missing_factor",
+                   f"маппер: нет описания у {len(unmapped)} из {len(factors)} факторов — для них показано исходное имя",
+                   [[f] for f in unmapped], ["factor"])
+
+
 def check_totals(pred, sig, issues, tol):
     """Допущение 3: total = Σ w·s. Виджет показывает ε на выбранной паре дат, здесь — сводка по всем."""
     ws = (sig["weight"] * sig["signal"]).groupby([sig["DATE"], sig["key"]]).sum()
@@ -287,7 +336,7 @@ def check_totals(pred, sig, issues, tol):
                    no_rows, ["DATE", "model"])
 
 
-def build_payload(pred, sig, issues, config, source_name):
+def build_payload(pred, sig, issues, config, source_name, mapper=None, mapper_name=None):
     dates = [d.date().isoformat() for d in pred["DATE"]]
     date_idx = {d: i for i, d in enumerate(dates)}
     factors = sorted(sig["factor"].unique())
@@ -313,12 +362,15 @@ def build_payload(pred, sig, issues, config, source_name):
     return {
         "meta": {
             "source": source_name,
+            "mapper": mapper_name,
             "built_at": dt.datetime.now().strftime("%Y-%m-%d %H:%M"),
             "config": config,
         },
         "models": MODELS,
         "dates": dates,
         "factors": factors,
+        # бизнес-описания по индексу фактора; None — описания нет, показывается имя
+        "factor_desc": [mapper.get(f) for f in factors] if mapper is not None else None,
         "pred": pred_out,
         "sig": sig_out,
         "issues": issues.items,
@@ -371,20 +423,27 @@ def load_config(path, overrides):
     return config
 
 
-def build(input_path, output_path, config, self_test=False, stream=sys.stderr):
+def build(input_path, output_path, config, self_test=False, stream=sys.stderr, mapper_path=None):
     issues = Issues()
     pred_raw, sig_raw = read_workbook(input_path)
+    mapper = read_mapper(mapper_path, issues) if mapper_path else None
     pred = validate_predictions(pred_raw, issues)
     if len(pred) < 2:
         raise BuildError("В листе predictions меньше двух дат — сравнивать не с чем")
     sig = validate_signals(sig_raw, set(pred["DATE"]), issues)
     check_totals(pred, sig, issues, config["eps_tolerance"])
-    payload = build_payload(pred, sig, issues, config, Path(input_path).name)
+    if mapper is not None:
+        check_mapper_coverage(sorted(sig["factor"].unique()), mapper, issues)
+    payload = build_payload(pred, sig, issues, config, Path(input_path).name,
+                            mapper, Path(mapper_path).name if mapper_path else None)
     html = render_html(payload, self_test=self_test)
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     Path(output_path).write_text(html, encoding="utf-8")
     print(f"Прочитано: {len(pred)} дат ({payload['dates'][0]} … {payload['dates'][-1]}), "
           f"{len(sig)} строк signals, {len(payload['factors'])} факторов.", file=stream)
+    if mapper is not None:
+        n = sum(d is not None for d in payload["factor_desc"])
+        print(f"Описания факторов: {n} из {len(payload['factors'])} ({Path(mapper_path).name}).", file=stream)
     issues.print(stream)
     print(f"Записано: {output_path} ({len(html) / 1024:.0f} КБ)", file=stream)
     return issues
@@ -394,6 +453,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--input", required=True, help="путь к predictions.xlsx")
     ap.add_argument("--output", default="dashboard.html", help="куда записать HTML (по умолчанию dashboard.html)")
+    ap.add_argument("--mapper", help="xlsx со столбцами factor и factor_desc: бизнес-описания факторов вместо имён")
     ap.add_argument("--config", help="JSON с ключами конфига: " + ", ".join(DEFAULT_CONFIG))
     ap.add_argument("--spark-points", type=int, dest="factor_spark_points",
                     help=f"окно спарклайна факторов, точек (по умолчанию {DEFAULT_CONFIG['factor_spark_points']})")
@@ -406,7 +466,7 @@ def main(argv=None):
     try:
         config = load_config(a.config, {"factor_spark_points": a.factor_spark_points,
                                         "total_spark_points": a.total_spark_points})
-        issues = build(a.input, a.output, config, self_test=a.self_test)
+        issues = build(a.input, a.output, config, self_test=a.self_test, mapper_path=a.mapper)
     except BuildError as e:
         print(f"Ошибка: {e}", file=sys.stderr)
         return 2

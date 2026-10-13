@@ -41,7 +41,7 @@ class BuildTest(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def build(self, pred, sig, **kw):
+    def build(self, pred, sig, **kw):  # kw → bd.build (self_test, mapper_path)
         src = self.dir / "in.xlsx"
         out = self.dir / "out.html"
         write_xlsx(src, pred, sig)
@@ -131,6 +131,51 @@ class BuildTest(unittest.TestCase):
                            capture_output=True, text=True)
         self.assertEqual(r.returncode, 2)
         self.assertIn("не найден", r.stderr)
+
+    def write_mapper(self, df, name="mapper.xlsx"):
+        path = self.dir / name
+        df.to_excel(path, index=False)
+        return path
+
+    def test_mapper_descriptions_embedded(self):
+        pred, sig = gen.generate("monthly", "2025-01-31", "2025-06-30", [], 1, False)
+        mp = self.write_mapper(pd.DataFrame({"factor": list(gen.FACTOR_DESC), "factor_desc": list(gen.FACTOR_DESC.values())}))
+        issues, _, p = self.build(pred, sig, mapper_path=mp)
+        self.assertEqual(issues.items, [])
+        self.assertEqual(p["meta"]["mapper"], "mapper.xlsx")
+        self.assertEqual(p["factor_desc"], [gen.FACTOR_DESC[f] for f in p["factors"]])
+
+    def test_without_mapper_no_descriptions(self):
+        pred, sig = gen.generate("monthly", "2025-01-31", "2025-03-31", [], 1, False)
+        _, _, p = self.build(pred, sig)
+        self.assertIsNone(p["factor_desc"])
+        self.assertIsNone(p["meta"]["mapper"])
+
+    def test_mapper_partial_dirty_and_conflicting(self):
+        pred, sig = gen.generate("monthly", "2025-01-31", "2025-06-30", [], 1, False)
+        factors = sorted(sig["factor"].unique())
+        a, b, c = factors[0], factors[1], factors[2]
+        mp = self.write_mapper(pd.DataFrame({
+            " factor ": [f"  {a} ", b, b, c, "unused_factor"],
+            "factor_desc": ["  Описание A ", "Описание B", "Другое B", None, "Не используется"],
+        }))
+        issues, _, p = self.build(pred, sig, mapper_path=mp)
+        self.assertTrue({"mapper_conflicting_desc", "mapper_empty_desc", "mapper_missing_factor"} <= self.codes(issues))
+        desc = dict(zip(p["factors"], p["factor_desc"]))
+        self.assertEqual(desc[a], "Описание A")    # пробелы обрезаны
+        self.assertEqual(desc[b], "Описание B")    # при конфликте — первое
+        self.assertIsNone(desc[c])                 # пустое описание → исходное имя
+        missing = next(i for i in issues.items if i["code"] == "mapper_missing_factor")
+        self.assertEqual(missing["count"], len(factors) - 2)
+
+    def test_mapper_errors(self):
+        pred, sig = gen.generate("monthly", "2025-01-31", "2025-03-31", [], 1, False)
+        bad = self.write_mapper(pd.DataFrame({"factor": ["x"], "description": ["y"]}), "bad.xlsx")
+        with self.assertRaises(bd.BuildError) as cm:
+            self.build(pred, sig, mapper_path=bad)
+        self.assertIn("factor_desc", str(cm.exception))
+        with self.assertRaises(bd.BuildError):
+            self.build(pred, sig, mapper_path=self.dir / "nope.xlsx")
 
     def test_config_spark_points(self):
         cfg = self.dir / "cfg.json"

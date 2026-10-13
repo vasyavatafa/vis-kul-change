@@ -29,6 +29,11 @@
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
     });
   }
+  // Подпись фактора: описание из маппера (sans), иначе исходное имя (mono).
+  function fLabel(x) {
+    return '<span class="' + (x.desc ? 'fd' : 'fc') + '">' + esc(x.label) + '</span>';
+  }
+  function fTitle(x) { return esc(x.desc ? x.desc + ' · ' + x.name : x.name); }
   function isNum(x) { return typeof x === 'number' && isFinite(x); }
   function fx(x, d) {
     if (!isNum(x)) return '—';
@@ -320,7 +325,7 @@
       labels += '<div class="lbl' + (s.state === 'idle' || s.state === 'gone' ? ' dim' : '') + '" style="' + style +
         '" data-m="' + c.model + '" data-f="' + s.fi + '">' +
         (st.sym ? '<span class="sym ' + s.state + '" aria-hidden="true">' + st.sym + '</span>' : '') +
-        '<span class="nm">' + esc(s.name) + '</span><span class="w">' + fw(s.w) + '</span></div>';
+        '<span class="nm' + (s.desc ? ' fd' : '') + '">' + esc(s.label) + '</span><span class="w">' + fw(s.w) + '</span></div>';
     });
 
     var svg = '<svg class="bar" width="' + SVG_W + '" height="' + COL_H + '" role="img" aria-label="Доли весов факторов ' + c.model + '">';
@@ -420,7 +425,7 @@
     var sub = 'включилось ' + c.nOn + ' (+' + fw(c.plus) + ') · выключилось ' + c.nOff + ' (' + MINUS + fw(c.minus) + ')' +
       (nNew ? ' · новых в модели ' + nNew : '') + (nGone ? ' · выбыло из модели ' + nGone : '');
     var items = c.items.filter(function (it) { return all || it.changed; }).sort(function (a, b) {
-      return (Math.abs(b.contrib) - Math.abs(a.contrib)) || (Math.abs(b.w) - Math.abs(a.w)) || (a.name < b.name ? -1 : 1);
+      return (Math.abs(b.contrib) - Math.abs(a.contrib)) || (Math.abs(b.w) - Math.abs(a.w)) || (a.label < b.label ? -1 : 1);
     });
     var body;
     if (!items.length) {
@@ -437,7 +442,7 @@
         items.map(function (it) {
           var d = Core.delta(it.vPrev, it.vCur);
           return '<tr data-f="' + it.fi + '" data-m="' + m + '">' +
-            '<td class="fname" title="' + esc(it.name) + '">' + esc(it.name) + '</td>' +
+            '<td class="fname" title="' + fTitle(it) + '"><div class="fn">' + fLabel(it) + '</div></td>' +
             '<td>' + stBadge(it) + '</td>' +
             '<td class="num">' + (it.inPrev ? esc(fval(it.vPrev)) : '<span class="dash">—</span>') + '</td>' +
             '<td class="num">' + (it.inCur ? esc(fval(it.vCur)) : '<span class="dash">—</span>') + '</td>' +
@@ -524,8 +529,9 @@
         '<th>' + c1.model + '</th><th>' + c2.model + '</th></tr></thead><tbody>' +
         shown.map(function (r) {
           return '<tr data-f="' + r.fi + '"' + (r.diverged ? ' class="diverged"' : '') + '>' +
-            '<td class="mono" title="' + esc(r.name) + '">' + esc(r.name) +
-              (r.diverged ? ' <span class="tag">· модели разошлись</span>' : '') + '</td>' +
+            '<td class="sname" title="' + fTitle(r) + '"><div class="fn">' + fLabel(r) +
+              (r.diverged ? ' <span class="tag">· модели разошлись</span>' : '') + '</div>' +
+              (r.desc ? '<div class="code">' + esc(r.name) + '</div>' : '') + '</td>' +
             '<td class="num">' + esc(fval(r.vPrev)) + '</td><td class="num">' + esc(fval(r.vCur)) + '</td>' +
             '<td class="num">' + fvalSigned(r.dAbs) + '</td><td class="num">' + fpct(r.dRel) + '</td>' +
             '<td>' + sparkFactor(c1.byFactor.has(r.fi) ? c1.model : c2.model, r.fi, v.bi, false) + '</td>' +
@@ -585,13 +591,14 @@
       ['значение ' + DATES[c.ti], it.inCur ? esc(it.vCur === null ? '—' : String(it.vCur)) : '— (нет в модели)'],
       ['вклад в ΔT', fws(it.contrib)]
     ];
-    return '<div class="tt-name">' + esc(it.name) + '</div><div>' + c.model + '</div><table>' +
+    return '<div class="tt-name' + (it.desc ? ' fd' : '') + '">' + esc(it.label) + '</div>' +
+      (it.desc ? '<div class="tt-code">' + esc(it.name) + '</div>' : '') + '<div>' + c.model + '</div><table>' +
       rows.map(function (r) { return '<tr><td>' + r[0] + '</td><td class="mono">' + r[1] + '</td></tr>'; }).join('') + '</table>';
   }
 
   function tipMerged(c, r) {
     return '<div class="tt-name">прочие ' + STATES[r.state].label + ' (' + r.segs.length + ')</div><div>' + c.model + ' · Σw ' + fw(r.w) + '</div><table>' +
-      r.segs.map(function (s) { return '<tr><td class="mono">' + esc(s.name) + '</td><td class="mono">' + fw(s.w) + '</td></tr>'; }).join('') + '</table>';
+      r.segs.map(function (s) { return '<tr><td>' + fLabel(s) + '</td><td class="mono">' + fw(s.w) + '</td></tr>'; }).join('') + '</table>';
   }
 
   function showTip(html, e) {
@@ -668,7 +675,8 @@
   }
 
   function init() {
-    document.getElementById('meta').textContent = DATA.meta.source + ' · ' + N + ' дат · собрано ' + DATA.meta.built_at;
+    document.getElementById('meta').textContent = DATA.meta.source + (DATA.meta.mapper ? ' · описания: ' + DATA.meta.mapper : '') +
+      ' · ' + N + ' дат · собрано ' + DATA.meta.built_at;
     var p = 'default';
     try { p = localStorage.getItem('pair-dashboard.palette') || 'default'; } catch (e) { /* хранилище недоступно */ }
     buildControls();
