@@ -177,6 +177,23 @@ class BuildTest(unittest.TestCase):
         with self.assertRaises(bd.BuildError):
             self.build(pred, sig, mapper_path=self.dir / "nope.xlsx")
 
+    def test_config_display_flags(self):
+        self.assertTrue(self.config["factor_code_in_title"])
+        self.assertTrue(self.config["show_hints"])
+        cfg = self.dir / "cfg.json"
+        cfg.write_text(json.dumps({"factor_code_in_title": False, "show_hints": False}), encoding="utf-8")
+        self.config = bd.load_config(cfg, {})
+        pred, sig = gen.generate("monthly", "2025-01-31", "2025-03-31", [], 1, False)
+        _, _, p = self.build(pred, sig)
+        self.assertFalse(p["meta"]["config"]["factor_code_in_title"])
+        self.assertFalse(p["meta"]["config"]["show_hints"])
+        cfg.write_text(json.dumps({"show_hints": "no"}), encoding="utf-8")
+        with self.assertRaises(bd.BuildError):
+            bd.load_config(cfg, {})
+
+    def test_example_config_matches_defaults(self):
+        self.assertEqual(bd.load_config(ROOT / "config.example.json", {}), bd.load_config(None, {}))
+
     def test_config_spark_points(self):
         cfg = self.dir / "cfg.json"
         cfg.write_text(json.dumps({"factor_spark_points": 10}), encoding="utf-8")

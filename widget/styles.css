@@ -248,7 +248,7 @@ button:disabled { cursor: default; }
 .neg { color: var(--off-text); }
 .zero { color: var(--muted); }
 .card-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid var(--rule); padding-top: 10px; flex-wrap: wrap; }
-.spark-total { display: block; overflow: visible; }
+.spark-total { display: block; overflow: visible; margin-left: auto; }
 .spark-total .line { fill: none; stroke: var(--text); stroke-width: 1.5; }
 .spark-total .thr { fill: none; stroke: var(--disabled-fg); stroke-width: 1.2; stroke-dasharray: 3 3; }
 .spark-total .pt-base { fill: var(--surface); stroke: var(--text); stroke-width: 1.2; }
@@ -349,7 +349,6 @@ rect.sg { cursor: pointer; }
 .tbl td.sname { min-width: 160px; max-width: 360px; white-space: normal; }
 /* описание из маппера может быть длинным — не больше двух строк, полное — в title */
 .tbl .fn { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.3; word-break: break-word; }
-.tbl .code { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--faint); }
 .fc { font-family: 'IBM Plex Mono', monospace; }
 .fd { font-family: 'IBM Plex Sans', sans-serif; }
 .lbl .nm.fd { font-size: 12.5px; }
@@ -423,3 +422,5 @@ rect.sg { cursor: pointer; }
 }
 
 #selftest:empty, #issues:empty { display: none; }
+/* show_hints: false — убрать пояснительные тексты; предупреждения и данные остаются */
+.no-hints .hint { display: none !important; }

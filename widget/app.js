@@ -33,7 +33,8 @@
   function fLabel(x) {
     return '<span class="' + (x.desc ? 'fd' : 'fc') + '">' + esc(x.label) + '</span>';
   }
-  function fTitle(x) { return esc(x.desc ? x.desc + ' · ' + x.name : x.name); }
+  // title подписи: описание и исходное имя factor (отключается factor_code_in_title: false)
+  function fTitle(x) { return esc(x.desc && CFG.factor_code_in_title ? x.desc + ' · ' + x.name : x.label); }
   function isNum(x) { return typeof x === 'number' && isFinite(x); }
   function fx(x, d) {
     if (!isNum(x)) return '—';
@@ -201,7 +202,7 @@
     document.getElementById('b1-title').textContent = 'Итоги моделей: ' + DATES[v.bi] + ' → ' + DATES[state.ti];
     document.getElementById('b1-grid').innerHTML = modelCard(v.c1, v.bi) + modelCard(v.c2, v.bi);
     var lines = [v.c1, v.c2].map(reconLine);
-    lines.push('<span>Пунктир на спарклайне — порог; пустая точка — базовая дата, заполненная — отчётная.</span>');
+    lines.push('<span class="hint">Пунктир на спарклайне — порог; пустая точка — базовая дата, заполненная — отчётная.</span>');
     document.getElementById('b1-recon').innerHTML = lines.join('');
   }
 
@@ -214,7 +215,7 @@
     var badge = crossed
       ? (fc ? '<span class="badge cross up">▲ пересекла порог вверх — сработала</span>'
             : '<span class="badge cross down">▼ пересекла порог вниз — перестала срабатывать</span>')
-      : '<span class="badge neutral">решение не изменилось' + (fc === null ? '' : fc ? ' · сработала' : ' · не сработала') + '</span>';
+      : '<span class="badge neutral hint">решение не изменилось' + (fc === null ? '' : fc ? ' · сработала' : ' · не сработала') + '</span>';
     var dT = isNum(pp.total) && isNum(pc.total) ? pc.total - pp.total : null;
     var arrow = !isNum(dT) || Math.abs(dT) < 1e-12 ? '→' : dT > 0 ? '↑' : '↓';
     return '<div class="panel model-card' + (crossed ? (fc ? ' crossed-up' : ' crossed-down') : '') + '">' +
@@ -225,7 +226,7 @@
         '<div class="delta-row ' + cls(dT) + '"><span aria-hidden="true">' + arrow + '</span><span>ΔT = ' + fs(dT) + '</span></div>' +
         totalRow(state.ti, pc, true) +
       '</div>' +
-      '<div class="card-foot"><span class="muted small">total и порог, ' + Core.sparkWindow(state.ti, bi, CFG.total_spark_points).length + ' точек</span>' +
+      '<div class="card-foot"><span class="muted small hint">total и порог, ' + Core.sparkWindow(state.ti, bi, CFG.total_spark_points).length + ' точек</span>' +
         sparkTotal(c.model, state.ti, bi) + '</div>' +
     '</div>';
   }
@@ -253,7 +254,8 @@
     if (r.ok) s += r.eps === 0 ? '0' : '<span title="' + r.eps + '">0</span> <span class="muted">(|ε| ≤ ' + fexp(r.tol) + ')</span>';
     else s += fexp(r.eps) + ' — больше допуска ' + fexp(r.tol);
     if (!r.levelsOk) s += '; total ≠ Σw·s: на базовой ' + fexp(r.levelPrev) + ', на t ' + fexp(r.levelCur);
-    return '<span' + (bad ? ' class="bad">⚠ ' : '>') + s + '</span>';
+    // сошедшаяся сверка — пояснение (скрывается show_hints: false), несошедшаяся — всегда видна
+    return '<span class="' + (bad ? 'bad">⚠ ' : 'hint">') + s + '</span>';
   }
 
   function sparkTotal(m, ti, bi) {
@@ -362,7 +364,7 @@
       ? ' <span class="' + cls(c.weightEffect) + '">' + fws(c.weightEffect) + '</span> <span class="muted small">(веса)</span>' : '';
     var decomp = '<div class="decomp"><span class="pos">+' + fw(c.plus) + '</span> <span class="neg">' + MINUS + fw(c.minus) + '</span>' + we +
       ' = <span class="total ' + cls(c.dT) + '">ΔT ' + fs(c.dT) + '</span>' +
-      ' <span class="muted small">· включилось ' + c.nOn + ', выключилось ' + c.nOff + '</span></div>';
+      ' <span class="muted small hint">· включилось ' + c.nOn + ', выключилось ' + c.nOff + '</span></div>';
 
     return '<div class="col">' + head +
       '<div class="chart" style="height:' + COL_H + 'px"><div class="labels" style="right:' + SVG_W + 'px">' + labels + '</div>' + svg + '</div>' +
@@ -381,7 +383,7 @@
     }).join('');
     html += '<span class="it"><span class="ln"></span>порог на отчётную дату</span>';
     html += '<span class="it"><span class="ln dash"></span>total на базовой дате</span>';
-    html += '<span>число справа от имени — вес фактора</span>';
+    html += '<span class="hint">число справа от имени — вес фактора</span>';
     html += '<span class="palette"><span>Палитра</span><span class="seg-group" role="group" aria-label="Палитра">' +
       '<button type="button" class="seg-btn" data-palette="default">зелёный / красный</button>' +
       '<button type="button" class="seg-btn" data-palette="cb">синий / оранжевый</button></span></span>';
@@ -452,7 +454,7 @@
             '<td class="num ' + cls(it.contrib) + '">' + fws(it.contrib) + '</td>' +
             '<td class="num">' + (noDT ? '<span class="dash">—</span>' : fpct(it.contrib / c.dT)) + '</td></tr>';
         }).join('') + '</tbody></table></div>' +
-        '<div class="tbl-foot">Столбцы дат — factor_value на базовой (' + DATES[bi] + ') и отчётной (' + DATES[state.ti] + ') дате. ' +
+        '<div class="tbl-foot hint">Столбцы дат — factor_value на базовой (' + DATES[bi] + ') и отчётной (' + DATES[state.ti] + ') дате. ' +
         'Динамика — ' + CFG.factor_spark_points + ' точек до отчётной даты: ● сигнал = 1, ○ сигнал = 0 в этой модели, вертикальные метки — базовая и отчётная даты. ' +
         'Доля — вклад / ΔT.</div>';
     }
@@ -530,8 +532,7 @@
         shown.map(function (r) {
           return '<tr data-f="' + r.fi + '"' + (r.diverged ? ' class="diverged"' : '') + '>' +
             '<td class="sname" title="' + fTitle(r) + '"><div class="fn">' + fLabel(r) +
-              (r.diverged ? ' <span class="tag">· модели разошлись</span>' : '') + '</div>' +
-              (r.desc ? '<div class="code">' + esc(r.name) + '</div>' : '') + '</td>' +
+              (r.diverged ? ' <span class="tag hint">· модели разошлись</span>' : '') + '</div></td>' +
             '<td class="num">' + esc(fval(r.vPrev)) + '</td><td class="num">' + esc(fval(r.vCur)) + '</td>' +
             '<td class="num">' + fvalSigned(r.dAbs) + '</td><td class="num">' + fpct(r.dRel) + '</td>' +
             '<td>' + sparkFactor(c1.byFactor.has(r.fi) ? c1.model : c2.model, r.fi, v.bi, false) + '</td>' +
@@ -592,7 +593,7 @@
       ['вклад в ΔT', fws(it.contrib)]
     ];
     return '<div class="tt-name' + (it.desc ? ' fd' : '') + '">' + esc(it.label) + '</div>' +
-      (it.desc ? '<div class="tt-code">' + esc(it.name) + '</div>' : '') + '<div>' + c.model + '</div><table>' +
+      (it.desc && CFG.factor_code_in_title ? '<div class="tt-code">' + esc(it.name) + '</div>' : '') + '<div>' + c.model + '</div><table>' +
       rows.map(function (r) { return '<tr><td>' + r[0] + '</td><td class="mono">' + r[1] + '</td></tr>'; }).join('') + '</table>';
   }
 
@@ -677,6 +678,7 @@
   function init() {
     document.getElementById('meta').textContent = DATA.meta.source + (DATA.meta.mapper ? ' · описания: ' + DATA.meta.mapper : '') +
       ' · ' + N + ' дат · собрано ' + DATA.meta.built_at;
+    if (CFG.show_hints === false) document.documentElement.classList.add('no-hints');
     var p = 'default';
     try { p = localStorage.getItem('pair-dashboard.palette') || 'default'; } catch (e) { /* хранилище недоступно */ }
     buildControls();

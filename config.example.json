@@ -1,0 +1,10 @@
+{
+  "factor_spark_points": 6,
+  "total_spark_points": 24,
+  "eps_tolerance": 1e-6,
+  "default_model_1": "up_10",
+  "default_model_2": "down_10",
+  "title": "Сравнение моделей",
+  "factor_code_in_title": true,
+  "show_hints": true
+}

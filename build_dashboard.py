@@ -37,7 +37,10 @@ DEFAULT_CONFIG = {
     "default_model_1": "up_10",
     "default_model_2": "down_10",
     "title": "Сравнение моделей",
+    "factor_code_in_title": True,  # исходное имя factor во всплывающей подписи рядом с описанием из маппера
+    "show_hints": True,            # пояснительные тексты; false — только данные, легенда и предупреждения
 }
+BOOL_KEYS = ("factor_code_in_title", "show_hints")
 
 SIGNAL_COLUMNS = ["DATE", "model", "factor", "factor_value", "signal", "weight"]
 MAPPER_COLUMNS = ["factor", "factor_desc"]
@@ -420,6 +423,9 @@ def load_config(path, overrides):
         if int(config[k]) < 2:
             raise BuildError(f"{k} должно быть не меньше 2")
         config[k] = int(config[k])
+    for k in BOOL_KEYS:
+        if not isinstance(config[k], bool):
+            raise BuildError(f"{k} должно быть true или false, а не {config[k]!r}")
     return config
 
 
