@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>__TITLE__</title>
+<style>/*__FONTS__*/</style>
+<style>/*__STYLES__*/</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <pattern id="hatch" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)">
+      <rect class="hatch-bg" width="6" height="6"></rect>
+      <line class="hatch-line" x1="0" y1="0" x2="0" y2="6"></line>
+    </pattern>
+  </defs>
+</svg>
+
+<div class="page">
+  <header class="head">
+    <div class="title-row">
+      <h1>__TITLE__</h1>
+      <span class="muted small" id="meta"></span>
+    </div>
+    <div class="controls panel" id="controls">
+      <div class="ctl">
+        <span class="ctl-label" id="m1-label">Модель 1</span>
+        <div class="seg-group" role="group" aria-labelledby="m1-label" data-slot="m1"></div>
+      </div>
+      <button type="button" class="icon-btn swap" id="swap" aria-label="Поменять модели местами" title="Поменять модели местами">⇄</button>
+      <div class="ctl">
+        <span class="ctl-label" id="m2-label">Модель 2</span>
+        <div class="seg-group" role="group" aria-labelledby="m2-label" data-slot="m2"></div>
+      </div>
+      <div class="ctl">
+        <label class="ctl-label" for="date">Отчётная дата</label>
+        <div class="date-row">
+          <button type="button" class="icon-btn small-btn" id="date-prev" aria-label="Предыдущая дата" title="Предыдущая дата">‹</button>
+          <select id="date" class="select mono"></select>
+          <button type="button" class="icon-btn small-btn" id="date-next" aria-label="Следующая дата" title="Следующая дата">›</button>
+        </div>
+      </div>
+      <div class="ctl">
+        <label class="ctl-label" for="base">Сравнить с</label>
+        <select id="base" class="select mono"></select>
+      </div>
+      <div class="ctl-note" id="base-note" role="status" aria-live="polite"></div>
+    </div>
+  </header>
+
+  <div id="selftest"></div>
+  <div id="issues"></div>
+
+  <section class="block" id="block1" aria-labelledby="b1-title">
+    <h2 id="b1-title"></h2>
+    <div class="two-col" id="b1-grid"></div>
+    <div class="recon small" id="b1-recon"></div>
+  </section>
+
+  <section class="block panel" id="block2" aria-labelledby="b2-title">
+    <h2 id="b2-title">Из чего сложилось изменение: доли весов факторов</h2>
+    <p class="muted small">Столбец — 100% суммы весов модели. Снизу вверх: держится → включился → выключился → неактивен,
+      поэтому высота закрашенной части равна текущему total. Сплошная черта — порог на отчётную дату, пунктир — total на базовой.
+      Наведите на сегмент или подпись — подробности; клик подсвечивает фактор во втором столбце и в таблицах.</p>
+    <div class="two-col cols" id="b2-cols"></div>
+    <div class="legend" id="legend"></div>
+  </section>
+
+  <section class="two-col tables" id="block3" aria-label="Факторы, сменившие сигнал"></section>
+
+  <section class="block panel" id="block4" aria-labelledby="b4-title">
+    <div class="sec-head">
+      <h2 id="b4-title">Исходные факторы обеих моделей</h2>
+      <label class="check"><input type="checkbox" id="only-changed" checked> только со сменой сигнала</label>
+    </div>
+    <div class="table-wrap" id="summary"></div>
+    <div class="muted small" id="summary-note"></div>
+  </section>
+</div>
+
+<div id="tooltip" class="tooltip" role="tooltip" hidden></div>
+
+<script type="application/json" id="payload">/*__DATA__*/</script>
+<script>/*__CORE__*/</script>
+<script>/*__APP__*/</script>
+<script>/*__SELFTEST__*/</script>
+</body>
+</html>
